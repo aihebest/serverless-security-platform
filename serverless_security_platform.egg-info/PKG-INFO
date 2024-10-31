@@ -1,0 +1,18 @@
+Metadata-Version: 2.1
+Name: serverless-security-platform
+Version: 0.1.0
+Requires-Dist: azure-functions
+Requires-Dist: azure-storage-blob
+Requires-Dist: azure-keyvault-secrets
+Requires-Dist: azure-identity
+Requires-Dist: aiohttp
+Requires-Dist: fastapi
+Requires-Dist: pydantic
+Requires-Dist: python-jose[cryptography]
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: pytest-mock; extra == "dev"
+Requires-Dist: bandit; extra == "dev"
+Requires-Dist: safety; extra == "dev"

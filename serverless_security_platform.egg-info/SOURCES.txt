@@ -1,0 +1,11 @@
+README.md
+setup.py
+serverless_security_platform.egg-info/PKG-INFO
+serverless_security_platform.egg-info/SOURCES.txt
+serverless_security_platform.egg-info/dependency_links.txt
+serverless_security_platform.egg-info/requires.txt
+serverless_security_platform.egg-info/top_level.txt
+tests/test_integration.py
+tests/test_monitors.py
+tests/test_scanners.py
+tests/test_security.py
