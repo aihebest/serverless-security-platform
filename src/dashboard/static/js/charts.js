@@ -1,4 +1,3 @@
-// static/js/charts.js
 class DashboardCharts {
     constructor() {
         this.scoreChart = this.initializeScoreChart();
@@ -39,46 +38,43 @@ class DashboardCharts {
                 datasets: [{
                     data: [0, 0, 0, 0],
                     backgroundColor: [
-                        'rgb(239, 68, 68)',
-                        'rgb(251, 146, 60)',
-                        'rgb(251, 191, 36)',
-                        'rgb(34, 197, 94)'
+                        'rgb(239, 68, 68)',  // Critical - Red
+                        'rgb(251, 146, 60)', // High - Orange
+                        'rgb(251, 191, 36)', // Medium - Yellow
+                        'rgb(34, 197, 94)'   // Low - Green
                     ]
                 }]
             },
             options: {
-                responsive: true
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
             }
         });
     }
 
     updateScoreChart(scans) {
-        this.scoreChart.data.labels = scans.map(scan => 
-            new Date(scan.timestamp).toLocaleDateString()
-        ).reverse();
-        this.scoreChart.data.datasets[0].data = scans.map(scan => 
-            scan.results.risk_score
-        ).reverse();
+        const data = scans.map(scan => ({
+            x: new Date(scan.timestamp),
+            y: scan.results.risk_score
+        })).reverse();
+
+        this.scoreChart.data.datasets[0].data = data;
+        this.scoreChart.data.labels = data.map(d => 
+            d.x.toLocaleDateString()
+        );
         this.scoreChart.update();
     }
 
-    updateIssuesChart(findings) {
-        const severityCounts = {
-            critical: 0,
-            high: 0,
-            medium: 0,
-            low: 0
-        };
-
-        findings.forEach(finding => {
-            severityCounts[finding.severity.toLowerCase()]++;
-        });
-
+    updateIssuesChart(severityData) {
         this.issuesChart.data.datasets[0].data = [
-            severityCounts.critical,
-            severityCounts.high,
-            severityCounts.medium,
-            severityCounts.low
+            severityData.critical || 0,
+            severityData.high || 0,
+            severityData.medium || 0,
+            severityData.low || 0
         ];
         this.issuesChart.update();
     }

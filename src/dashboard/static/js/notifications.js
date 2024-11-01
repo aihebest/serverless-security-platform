@@ -1,7 +1,15 @@
-// static/js/notifications.js
 class NotificationManager {
+    constructor() {
+        this.container = document.getElementById('notificationArea');
+        if (!this.container) {
+            this.container = document.createElement('div');
+            this.container.id = 'notificationArea';
+            this.container.className = 'fixed bottom-4 right-4 w-80 z-50';
+            document.body.appendChild(this.container);
+        }
+    }
+
     show(title, message, type = 'info') {
-        const container = document.getElementById('notificationArea');
         const notification = document.createElement('div');
         
         const colors = {
@@ -22,7 +30,7 @@ class NotificationManager {
             </div>
         `;
 
-        container.appendChild(notification);
+        this.container.appendChild(notification);
         
         // Animate in
         setTimeout(() => {
@@ -32,27 +40,21 @@ class NotificationManager {
         // Setup close button
         const closeBtn = notification.querySelector('button');
         closeBtn.addEventListener('click', () => {
-            notification.classList.add('opacity-0');
-            setTimeout(() => {
-                container.removeChild(notification);
-            }, 300);
+            this.removeNotification(notification);
         });
 
         // Auto-remove after 5 seconds
         setTimeout(() => {
-            if (notification.parentNode === container) {
-                notification.classList.add('opacity-0');
-                setTimeout(() => {
-                    if (notification.parentNode === container) {
-                        container.removeChild(notification);
-                    }
-                }, 300);
-            }
+            this.removeNotification(notification);
         }, 5000);
     }
-}
 
-// Initialize dashboard when document is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.dashboard = new SecurityDashboard();
-});
+    removeNotification(notification) {
+        notification.classList.add('opacity-0');
+        setTimeout(() => {
+            if (notification.parentNode === this.container) {
+                this.container.removeChild(notification);
+            }
+        }, 300);
+    }
+}

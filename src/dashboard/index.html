@@ -15,7 +15,7 @@
             <div class="container mx-auto flex justify-between items-center">
                 <h1 class="text-xl font-bold">Security Platform</h1>
                 <div class="flex items-center space-x-4">
-                    <span id="connectionStatus" class="text-green-400">●</span>
+                    <div id="connectionStatus" class="text-sm"></div>
                     <button id="refreshBtn" class="px-4 py-2 bg-blue-500 rounded hover:bg-blue-600">
                         Refresh
                     </button>
@@ -29,18 +29,18 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="bg-white p-6 rounded-lg shadow">
                     <h3 class="text-lg font-semibold mb-2">Security Score</h3>
-                    <div class="text-3xl font-bold text-blue-600" id="securityScore">--</div>
-                    <div class="text-sm text-gray-500" id="scoreChange"></div>
+                    <div id="securityScore" class="text-3xl font-bold text-blue-600">--</div>
+                    <div id="scoreChange" class="text-sm text-gray-500"></div>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow">
                     <h3 class="text-lg font-semibold mb-2">Active Issues</h3>
-                    <div class="text-3xl font-bold text-red-600" id="activeIssues">--</div>
+                    <div id="activeIssues" class="text-3xl font-bold text-red-600">--</div>
                     <div class="text-sm text-gray-500">Across all scans</div>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow">
                     <h3 class="text-lg font-semibold mb-2">Compliance Status</h3>
-                    <div class="text-3xl font-bold text-green-600" id="complianceScore">--</div>
-                    <div class="text-sm text-gray-500" id="complianceStatus"></div>
+                    <div id="complianceScore" class="text-3xl font-bold text-green-600">--</div>
+                    <div id="complianceStatus" class="text-sm text-gray-500"></div>
                 </div>
             </div>
 
@@ -54,6 +54,16 @@
                     <h3 class="text-lg font-semibold mb-4">Issues by Severity</h3>
                     <canvas id="issuesChart"></canvas>
                 </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <div id="connectionStatus" class="text-sm"></div>
+                <button id="scanDepsBtn" class="px-4 py-2 bg-green-500 rounded hover:bg-green-600 text-white">
+                    Scan Dependencies
+                </button>
+                <button id="refreshBtn" class="px-4 py-2 bg-blue-500 rounded hover:bg-blue-600 text-white">
+                    Refresh
+                </button>
             </div>
 
             <!-- Recent Scans -->
@@ -91,6 +101,8 @@
 
     <!-- Notification Area -->
     <div id="notificationArea" class="fixed bottom-4 right-4 w-80"></div>
+
+    <!-- Scripts -->
     <script src="static/js/charts.js"></script>
     <script src="static/js/notifications.js"></script>
     <script src="static/js/dashboard.js"></script>
