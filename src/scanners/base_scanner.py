@@ -1,80 +1,129 @@
+# src/scanners/base_scanner.py
+
 from abc import ABC, abstractmethod
-from datetime import datetime, UTC
-from typing import Dict, Any, List
-import hashlib
+from datetime import datetime
+from typing import Dict, List, Optional, Any
+import logging
+import asyncio
 import json
+import uuid
+
+class SecurityFinding:
+    def __init__(
+        self,
+        finding_id: str,
+        timestamp: datetime,
+        severity: str,
+        category: str,
+        description: str,
+        resource: str,
+        recommendation: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ):
+        self.finding_id = finding_id
+        self.timestamp = timestamp
+        self.severity = severity
+        self.category = category
+        self.description = description
+        self.resource = resource
+        self.recommendation = recommendation
+        self.metadata = metadata or {}
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'finding_id': self.finding_id,
+            'timestamp': self.timestamp.isoformat(),
+            'severity': self.severity,
+            'category': self.category,
+            'description': self.description,
+            'resource': self.resource,
+            'recommendation': self.recommendation,
+            'metadata': self.metadata
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SecurityFinding':
+        return cls(
+            finding_id=data['finding_id'],
+            timestamp=datetime.fromisoformat(data['timestamp']),
+            severity=data['severity'],
+            category=data['category'],
+            description=data['description'],
+            resource=data['resource'],
+            recommendation=data['recommendation'],
+            metadata=data.get('metadata', {})
+        )
 
 class BaseScanner(ABC):
-    """Enhanced base class for all security scanners"""
-    
-    def __init__(self, logger=None):
-        self.logger = logger
-        self.scan_history = []
-    
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.logger = logging.getLogger(self.__class__.__name__)
+
     @abstractmethod
-    async def scan(self, target: Any) -> Dict:
-        """Execute security scan on target"""
+    async def scan(self) -> List[SecurityFinding]:
+        """Execute the security scan."""
         pass
-    
-    def generate_report(self, findings: List[Dict]) -> Dict:
-        """Generate standardized report format with enhanced metadata"""
-        report = {
-            'timestamp': datetime.now(UTC).isoformat(),
-            'findings': findings,
-            'total_issues': len(findings),
-            'scan_status': 'completed',
-            'risk_score': self._calculate_risk_score(findings),
-            'scan_id': self._generate_scan_id(findings)
-        }
-        
-        # Store in history for trending
-        self.scan_history.append({
-            'timestamp': report['timestamp'],
-            'risk_score': report['risk_score'],
-            'total_issues': report['total_issues']
-        })
-        
-        if len(self.scan_history) > 10:
-            self.scan_history.pop(0)
-        
-        report['trend'] = self._calculate_trend()
-        
-        return report
-    
-    def _calculate_risk_score(self, findings: List[Dict]) -> float:
-        """Calculate risk score based on findings severity"""
-        if not findings:
-            return 0.0
-        
-        severity_weights = {
-            'critical': 1.0,
-            'high': 0.7,
-            'medium': 0.4,
-            'low': 0.1
-        }
-        
-        total_weight = sum(
-            severity_weights.get(finding.get('severity', 'low'), 0.1)
-            for finding in findings
-        )
-        
-        return round(min(total_weight / len(findings), 1.0) * 100, 2)
-    
-    def _generate_scan_id(self, findings: List[Dict]) -> str:
-        """Generate unique scan ID based on content"""
-        content = json.dumps(findings, sort_keys=True)
-        return hashlib.sha256(content.encode()).hexdigest()[:12]
-    
-    def _calculate_trend(self) -> Dict:
-        """Calculate trend data from scan history"""
-        if len(self.scan_history) < 2:
-            return {'direction': 'stable', 'change': 0}
-        
-        current = self.scan_history[-1]['risk_score']
-        previous = self.scan_history[-2]['risk_score']
-        change = current - previous
-        
-        return {
-            'direction': 'improving' if change < 0 else 'degrading' if change > 0 else 'stable',
-            'change': round(change, 2)
-        }
+
+    @abstractmethod
+    async def validate_configuration(self) -> bool:
+        """Validate scanner configuration."""
+        pass
+
+    async def pre_scan_hooks(self) -> None:
+        """Execute actions before scanning."""
+        self.logger.info(f"Starting scan with {self.__class__.__name__}")
+
+    async def post_scan_hooks(self, findings: List[SecurityFinding]) -> None:
+        """Execute actions after scanning."""
+        self.logger.info(f"Completed scan with {len(findings)} findings")
+        await self._process_findings(findings)
+
+    async def _process_findings(self, findings: List[SecurityFinding]) -> None:
+        """Process and store findings."""
+        try:
+            for finding in findings:
+                await self._store_finding(finding)
+                if self._is_critical(finding):
+                    await self._send_alert(finding)
+        except Exception as e:
+            self.logger.error(f"Error processing findings: {str(e)}")
+
+    async def _store_finding(self, finding: SecurityFinding) -> None:
+        """Store the finding in the configured storage."""
+        # Implementation will depend on your storage solution
+        pass
+
+    async def _send_alert(self, finding: SecurityFinding) -> None:
+        """Send alert for critical findings."""
+        # Implementation will depend on your alerting solution
+        pass
+
+    def _is_critical(self, finding: SecurityFinding) -> bool:
+        """Determine if a finding is critical."""
+        return finding.severity.upper() == 'CRITICAL'
+
+    async def execute_scan(self) -> List[SecurityFinding]:
+        """Main execution method with error handling."""
+        try:
+            # Validate configuration
+            if not await self.validate_configuration():
+                raise ValueError("Invalid scanner configuration")
+
+            # Execute pre-scan hooks
+            await self.pre_scan_hooks()
+
+            # Execute scan
+            findings = await self.scan()
+
+            # Execute post-scan hooks
+            await self.post_scan_hooks(findings)
+
+            return findings
+
+        except Exception as e:
+            self.logger.error(f"Scan failed: {str(e)}")
+            raise
+
+    def generate_finding_id(self) -> str:
+        """Generate a unique finding ID."""
+        return str(uuid.uuid4())

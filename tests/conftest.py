@@ -1,32 +1,33 @@
+# tests/conftest.py
+
 import pytest
+import asyncio
+from typing import Dict, Any
+import json
 import os
-from datetime import datetime
 
 @pytest.fixture
-def test_config():
-    """Provide test configuration"""
+def test_config() -> Dict[str, Any]:
     return {
-        'environment': 'test',
-        'azure_function_name': 'test-function',
-        'subscription_id': 'test-subscription',
-        'resource_group': 'test-rg'
+        'scan_interval': 300,
+        'severity_threshold': 'HIGH',
+        'notification_endpoints': ['http://localhost:7071/api/notify']
     }
 
 @pytest.fixture
-def sample_security_event():
-    """Provide sample security event data"""
+def mock_scan_result():
     return {
-        'timestamp': datetime.utcnow().isoformat(),
-        'severity': 'high',
-        'source': 'test-scanner',
-        'description': 'Potential security violation detected',
-        'affected_resource': 'test-function'
+        'scan_id': 'test-scan-001',
+        'timestamp': '2024-01-01T00:00:00Z',
+        'severity': 'HIGH',
+        'finding_type': 'DEPENDENCY_VULNERABILITY',
+        'description': 'Critical vulnerability found',
+        'affected_resource': 'package@1.0.0',
+        'recommendation': 'Update to latest version'
     }
 
-@pytest.fixture
-def mock_azure_context(mocker):
-    """Mock Azure Functions context"""
-    context = mocker.MagicMock()
-    context.function_name = "test_function"
-    context.invocation_id = "test_invocation_id"
-    return context
+@pytest.fixture(scope='session')
+def event_loop():
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()

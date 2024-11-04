@@ -1,0 +1,25 @@
+# requirements.txt
+# Core Dependencies (Fixed versions)
+setuptools==65.5.1
+wheel==0.38.4
+packaging==21.3
+
+# Azure Functions (Fixed versions)
+azure-functions==1.12.0
+azure-functions-worker==1.1.8
+azure-storage-blob==12.19.0
+azure-keyvault-secrets==4.7.0
+azure-identity==1.14.1
+
+# Security & Monitoring (Fixed versions)
+aiohttp==3.9.1
+python-jose[cryptography]==3.3.0
+pydantic==2.5.2
+applicationinsights==0.11.10
+
+# Additional Dependencies (Fixed versions)
+multidict==6.0.4
+attrs==21.4.0
+yarl==1.7.2
+async-timeout==4.0.2
+pyparsing==3.0.9  # Required by packaging
