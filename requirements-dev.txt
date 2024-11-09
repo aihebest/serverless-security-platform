@@ -16,3 +16,6 @@ flake8==6.1.0
 mypy==1.6.1
 bandit==1.7.5
 safety==2.3.5
+
+snyk==0.4.0
+dependency-check-core==7.4.4

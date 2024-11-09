@@ -2,55 +2,47 @@
 
 import pytest
 import aiohttp
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 from src.scanners.dependency_scanner import DependencyScanner
 
-@pytest.fixture
-def mock_vulnerability_response():
-    return [
-        {
-            "severity": "HIGH",
-            "description": "Security vulnerability in package",
-            "recommendation": "Update to version 2.0.0",
-            "cve_id": "CVE-2024-1234"
-        }
-    ]
-
-@pytest.fixture
-def dependency_scanner_config():
-    return {
-        "vulnerability_database_url": "http://test-vuln-db.com",
-        "scan_depth": "DEEP"
-    }
+@pytest.mark.asyncio
+async def test_dependency_scanner_initialization(mock_config):
+    scanner = DependencyScanner(mock_config)
+    assert scanner.vuln_db_url == mock_config["vulnerability_database_url"]
+    assert scanner.severity_threshold == "LOW"
 
 @pytest.mark.asyncio
-async def test_dependency_scanner_initialization(dependency_scanner_config):
-    scanner = DependencyScanner(dependency_scanner_config)
-    assert scanner.vuln_db_url == "http://test-vuln-db.com"
-    assert scanner.scan_depth == "DEEP"
+async def test_dependency_scanner_scan(mock_config, mock_requirements_file, mock_vulnerability_data):
+    scanner = DependencyScanner(mock_config)
+    scanner.requirements_paths = [mock_requirements_file]
 
-@pytest.mark.asyncio
-async def test_dependency_scanner_validation(dependency_scanner_config):
-    with patch('aiohttp.ClientSession.get') as mock_get:
-        mock_get.return_value.__aenter__.return_value.status = 200
-        scanner = DependencyScanner(dependency_scanner_config)
-        is_valid = await scanner.validate_configuration()
-        assert is_valid
+    # Mock the vulnerability database response
+    async def mock_get(*args, **kwargs):
+        response = MagicMock()
+        response.status = 200
+        response.json = MagicMock(return_value=[mock_vulnerability_data["requests"][0]])
+        return response
 
-@pytest.mark.asyncio
-async def test_package_scanning(dependency_scanner_config, mock_vulnerability_response):
-    with patch('aiohttp.ClientSession.get') as mock_get:
-        mock_get.return_value.__aenter__.return_value.status = 200
-        mock_get.return_value.__aenter__.return_value.json = Mock(
-            return_value=mock_vulnerability_response
-        )
+    with patch("aiohttp.ClientSession.get", side_effect=mock_get):
+        findings = await scanner.scan()
         
-        scanner = DependencyScanner(dependency_scanner_config)
-        results = await scanner.scan_package({
-            "name": "test-package",
-            "version": "1.0.0"
-        })
-        
-        assert len(results) == 1
-        assert results[0].severity == "HIGH"
-        assert results[0].metadata["cve_id"] == "CVE-2024-1234"
+        assert len(findings) > 0
+        assert findings[0].severity == "HIGH"
+        assert "CVE-2023-1234" in findings[0].metadata["cve_id"]
+
+@pytest.mark.asyncio
+async def test_dependency_scanner_validation(mock_config, mock_requirements_file):
+    scanner = DependencyScanner(mock_config)
+    scanner.requirements_paths = [mock_requirements_file]
+    
+    is_valid = await scanner.validate_configuration()
+    assert is_valid
+
+@pytest.mark.asyncio
+async def test_dependency_scanner_invalid_config(mock_config):
+    invalid_config = mock_config.copy()
+    invalid_config["vulnerability_database_url"] = ""
+    
+    scanner = DependencyScanner(invalid_config)
+    is_valid = await scanner.validate_configuration()
+    assert not is_valid

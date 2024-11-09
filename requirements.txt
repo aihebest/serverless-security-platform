@@ -23,3 +23,10 @@ attrs==21.4.0
 yarl==1.7.2
 async-timeout==4.0.2
 pyparsing==3.0.9  # Required by packaging
+
+azure-functions
+azure-identity
+azure-mgmt-resource
+azure-mgmt-web
+azure-cosmos
+pyyaml

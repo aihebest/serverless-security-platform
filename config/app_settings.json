@@ -1,0 +1,21 @@
+// config/app_settings.json
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AzureWebJobsStorage": "",
+        "FUNCTIONS_WORKER_RUNTIME": "python",
+        "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+        "CosmosDB_Endpoint": "",
+        "CosmosDB_Key": "",
+        "SignalR_ConnectionString": "",
+        "WEBSITE_TIME_ZONE": "UTC"
+    },
+    "Host": {
+        "LocalHttpPort": 7071,
+        "CORS": "*",
+        "CORSCredentials": false
+    },
+    "ConnectionStrings": {
+        "SecurityDB": ""
+    }
+}

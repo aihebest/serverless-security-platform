@@ -1,0 +1,29 @@
+# infrastructure/deploy/azure-config.yaml
+
+resourceGroup: rg-serverless-security
+location: your-location
+services:
+  functionApp:
+    name: fa-security-automation
+    kind: functionapp
+    sku: S1
+    
+  staticWebApp:
+    name: SecurityScanDashboard
+    sku: Free
+    
+  signalR:
+    name: SecurityAuto
+    sku: Standard_S1
+    
+  cosmosDB:
+    name: security-scan-results-db
+    kind: GlobalDocumentDB
+    
+  appInsights:
+    name: ai-security-automation
+    kind: web
+    
+  appServicePlan:
+    name: asp-security-automation
+    sku: S1

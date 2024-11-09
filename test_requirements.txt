@@ -9,3 +9,8 @@ multidict>=6.0.0  # Added for aiohttp dependency
 attrs>=21.0.0     # Added for aiohttp dependency
 yarl>=1.7.0       # Added for aiohttp dependency
 async_timeout>=4.0.0  # Added for aiohttp dependency
+
+# requirements.txt
+opencensus-ext-azure>=1.1.0
+applicationinsights>=0.11.10
+opencensus-ext-logging>=0.1.0

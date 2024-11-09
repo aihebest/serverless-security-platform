@@ -1,0 +1,34 @@
+// config/function.json
+{
+    "bindings": [
+        {
+            "authLevel": "function",
+            "type": "httpTrigger",
+            "direction": "in",
+            "name": "req",
+            "methods": ["get", "post"],
+            "route": "scan"
+        },
+        {
+            "type": "http",
+            "direction": "out",
+            "name": "res"
+        },
+        {
+            "type": "cosmosDB",
+            "direction": "out",
+            "name": "outputDocument",
+            "databaseName": "SecurityFindings",
+            "collectionName": "Scans",
+            "createIfNotExists": true,
+            "connectionStringSetting": "CosmosDBConnection"
+        },
+        {
+            "type": "signalR",
+            "direction": "out",
+            "name": "signalRMessages",
+            "hubName": "securityHub",
+            "connectionStringSetting": "SignalRConnection"
+        }
+    ]
+}

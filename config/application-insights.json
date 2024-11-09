@@ -1,0 +1,17 @@
+// config/application-insights.json
+{
+    "d10e3e52-5914-4cca-867a-63bceed0c63b": "", // You'll get this from Azure Portal
+    "InstrumentationKey=d10e3e52-5914-4cca-867a-63bceed0c63b;IngestionEndpoint=https://westus2-0.in.applicationinsights.azure.com/;LiveEndpoint=https://westus2.livediagnostics.monitor.azure.com/;ApplicationId=14d3ebe2-692b-4c5d-a80c-0f1d099e84d9": "",   // You'll get this from Azure Portal
+    "role": {
+        "name": "SecurityAutomation"
+    },
+    "sampling": {
+        "percentage": 100
+    },
+    "autoCollectRequests": true,
+    "autoCollectPerformance": true,
+    "autoCollectExceptions": true,
+    "autoCollectDependencies": true,
+    "autoCollectConsole": true,
+    "enableDebug": false
+}

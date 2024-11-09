@@ -8,13 +8,21 @@ import mimetypes
 # Create the FunctionApp instance
 app = func.FunctionApp()
 
+def add_cors_headers(resp: func.HttpResponse) -> func.HttpResponse:
+    """Add CORS headers to the response"""
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return resp
+
 @app.route(route="health", auth_level=func.AuthLevel.ANONYMOUS)
 async def health_check(req: func.HttpRequest) -> func.HttpResponse:
-    return func.HttpResponse(
+    response = func.HttpResponse(
         "The security platform is running",
         status_code=200,
         mimetype="text/plain"
     )
+    return add_cors_headers(response)
 
 @app.route(route="dashboard-data", auth_level=func.AuthLevel.ANONYMOUS)
 async def get_dashboard_data(req: func.HttpRequest) -> func.HttpResponse:
@@ -66,17 +74,19 @@ async def get_dashboard_data(req: func.HttpRequest) -> func.HttpResponse:
             "recent_scans": scan_history
         }
         
-        return func.HttpResponse(
+        response = func.HttpResponse(
             json.dumps(dashboard_data),
             mimetype="application/json"
         )
+        return add_cors_headers(response)
         
     except Exception as e:
-        return func.HttpResponse(
+        response = func.HttpResponse(
             json.dumps({"error": str(e)}),
             status_code=500,
             mimetype="application/json"
         )
+        return add_cors_headers(response)
 
 @app.route(route="dashboard", auth_level=func.AuthLevel.ANONYMOUS)
 async def serve_dashboard(req: func.HttpRequest) -> func.HttpResponse:
@@ -106,6 +116,9 @@ async def serve_dashboard(req: func.HttpRequest) -> func.HttpResponse:
 @app.route(route="scan/dependencies", auth_level=func.AuthLevel.ANONYMOUS)
 async def scan_dependencies(req: func.HttpRequest) -> func.HttpResponse:
     try:
+        # Initialize scanner
+        scanner = DependencyScanner()
+
         # Get requirements file path from request or use default
         requirements_file = req.params.get('file', 'requirements.txt')
         file_path = os.path.join(os.path.dirname(__file__), requirements_file)
@@ -121,45 +134,52 @@ async def scan_dependencies(req: func.HttpRequest) -> func.HttpResponse:
         
         # Initialize and run scanner
         scanner = DependencyScanner()
-        results = await scanner.scan(file_path)
+        results = await scanner.scan(requirements_file)
         
         # Store results (in production, you'd use proper storage)
         scan_history = results.copy()
         scan_history['timestamp'] = datetime.now(timezone.utc).isoformat()
         
+        response = func.HttpResponse(
+            json.dumps(results),
+            mimetype="application/json"
+        )
         return func.HttpResponse(
             json.dumps(results),
             mimetype="application/json"
         )
-        
     except Exception as e:
-        return func.HttpResponse(
+        response = func.HttpResponse(
             json.dumps({"error": str(e)}),
             status_code=500,
             mimetype="application/json"
-        )    
+        )
+        return add_cors_headers(response)    
 
-@app.route(route="static/{*filepath}")  # Changed from dashboard/static/
+@app.route(route="static/{*filepath}")
 async def serve_static_files(req: func.HttpRequest) -> func.HttpResponse:
     try:
         filepath = req.route_params.get('filepath')
         if not filepath:
             return func.HttpResponse("File not specified", status_code=400)
         
+        # Get the absolute path to the static directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        full_path = os.path.join(current_dir, 'src', 'dashboard', 'static', filepath)
+        static_dir = os.path.join(current_dir, 'src', 'dashboard', 'static')
+        file_path = os.path.join(static_dir, filepath)
         
-        print(f"Attempting to serve static file: {full_path}")  # Debug print
+        # Security check - ensure file path is within static directory
+        if not os.path.abspath(file_path).startswith(os.path.abspath(static_dir)):
+            return func.HttpResponse("Invalid file path", status_code=403)
         
-        if not os.path.exists(full_path):
-            return func.HttpResponse(
-                f"File not found: {filepath}",
-                status_code=404
-            )
+        if not os.path.exists(file_path):
+            return func.HttpResponse(f"File not found: {filepath}", status_code=404)
         
-        with open(full_path, 'r', encoding='utf-8') as f:
+        # Read file content
+        with open(file_path, 'rb') as f:
             content = f.read()
         
+        # Determine content type
         content_type, _ = mimetypes.guess_type(filepath)
         if not content_type:
             if filepath.endswith('.js'):
@@ -169,13 +189,15 @@ async def serve_static_files(req: func.HttpRequest) -> func.HttpResponse:
             else:
                 content_type = 'application/octet-stream'
         
-        return func.HttpResponse(
+        response = func.HttpResponse(
             content,
             mimetype=content_type
         )
+        return add_cors_headers(response)
+    
     except Exception as e:
-        print(f"Error serving static file: {str(e)}")  # Debug print
-        return func.HttpResponse(
+        response = func.HttpResponse(
             f"Error serving static file: {str(e)}",
             status_code=500
         )
+        return add_cors_headers(response)
