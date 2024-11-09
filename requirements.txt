@@ -1,32 +1,31 @@
-# requirements.txt
-# Core Dependencies (Fixed versions)
-setuptools==65.5.1
-wheel==0.38.4
-packaging==21.3
-
-# Azure Functions (Fixed versions)
+# Core Azure Functions
 azure-functions==1.12.0
-azure-functions-worker==1.1.8
-azure-storage-blob==12.19.0
-azure-keyvault-secrets==4.7.0
-azure-identity==1.14.1
+azure-functions-worker>=1.1.9,<1.2.0
 
-# Security & Monitoring (Fixed versions)
-aiohttp==3.9.1
-python-jose[cryptography]==3.3.0
-pydantic==2.5.2
-applicationinsights==0.11.10
+# Azure SDK
+azure-identity>=1.12.0
+azure-mgmt-resource>=21.1.0
+azure-mgmt-web>=7.0.0
+azure-cosmos>=4.3.1
+azure-storage-blob>=12.14.1
+azure-servicebus>=7.8.3
+azure-keyvault-secrets>=4.6.0
 
-# Additional Dependencies (Fixed versions)
-multidict==6.0.4
-attrs==21.4.0
-yarl==1.7.2
-async-timeout==4.0.2
-pyparsing==3.0.9  # Required by packaging
+# Web Framework
+fastapi>=0.95.0
+uvicorn>=0.21.1
+python-multipart>=0.0.6
 
-azure-functions
-azure-identity
-azure-mgmt-resource
-azure-mgmt-web
-azure-cosmos
-pyyaml
+# Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Monitoring
+opencensus-ext-azure>=1.1.7
+applicationinsights>=0.11.10
+
+# Utils
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+requests>=2.28.2
+aiohttp>=3.8.4
