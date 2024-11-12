@@ -1,0 +1,191 @@
+<!-- src/reporting/templates/detailed_report.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Scan Report</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        :root {
+            --critical: #dc3545;
+            --high: #fd7e14;
+            --medium: #ffc107;
+            --low: #28a745;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .card.critical { background-color: var(--critical); color: white; }
+        .card.high { background-color: var(--high); color: white; }
+        .card.medium { background-color: var(--medium); color: black; }
+        .card.low { background-color: var(--low); color: white; }
+        
+        .findings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        
+        .findings-table th,
+        .findings-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .findings-table th {
+            background-color: #f8f9fa;
+        }
+        
+        .chart-container {
+            margin-bottom: 30px;
+            height: 400px;
+        }
+        
+        .recommendations {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .recommendation-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Security Scan Report</h1>
+        <p>Generated on: {{ timestamp }}</p>
+        
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="card critical">
+                <h3>Critical</h3>
+                <h2>{{ summary.critical_findings }}</h2>
+            </div>
+            <div class="card high">
+                <h3>High</h3>
+                <h2>{{ summary.high_findings }}</h2>
+            </div>
+            <div class="card medium">
+                <h3>Medium</h3>
+                <h2>{{ summary.medium_findings }}</h2>
+            </div>
+            <div class="card low">
+                <h3>Low</h3>
+                <h2>{{ summary.low_findings }}</h2>
+            </div>
+        </div>
+        
+        <!-- Severity Distribution Chart -->
+        <div class="chart-container">
+            <canvas id="severityChart"></canvas>
+        </div>
+        
+        <!-- Findings Table -->
+        <h2>Detailed Findings</h2>
+        <table class="findings-table">
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for finding in scan_results.findings %}
+                <tr>
+                    <td>{{ finding.severity }}</td>
+                    <td>{{ finding.type }}</td>
+                    <td>{{ finding.description }}</td>
+                    <td>{{ finding.location }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Recommendations -->
+        <div class="recommendations">
+            <h2>Recommendations</h2>
+            {% for rec in recommendations %}
+            <div class="recommendation-item">
+                <h3>{{ rec.title }}</h3>
+                <p>{{ rec.description }}</p>
+                <p><strong>Severity:</strong> {{ rec.severity }}</p>
+                <p><strong>Remediation:</strong> {{ rec.remediation }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        // Initialize Charts
+        const severityCtx = document.getElementById('severityChart').getContext('2d');
+        new Chart(severityCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{
+                    data: [
+                        {{ severity_counts.CRITICAL }},
+                        {{ severity_counts.HIGH }},
+                        {{ severity_counts.MEDIUM }},
+                        {{ severity_counts.LOW }}
+                    ],
+                    backgroundColor: [
+                        '#dc3545',
+                        '#fd7e14',
+                        '#ffc107',
+                        '#28a745'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                title: {
+                    display: true,
+                    text: 'Finding Severity Distribution'
+                }
+            }
+        });
+    </script>
+</body>
+</html>
