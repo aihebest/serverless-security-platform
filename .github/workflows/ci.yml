@@ -7,8 +7,8 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    - cron: '0 0 * * *'  # Daily scan at midnight
-  workflow_dispatch:  # Manual trigger
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   security_scan:
@@ -27,12 +27,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Configure Azure credentials
+      - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Run Dependency Scan
+      - name: Run Security Scan
         env:
           COSMOS_DB_CONNECTION_STRING: ${{ secrets.COSMOS_DB_CONNECTION_STRING }}
           COSMOS_DB_DATABASE_NAME: ${{ secrets.COSMOS_DB_DATABASE_NAME }}
@@ -40,71 +40,27 @@ jobs:
         run: |
           python -c "
           import asyncio
-          from src.scanners.scanning_service import ScanningService
-          
-          async def run_scan():
-              scanner = ScanningService()
-              dependencies = [
-                  {'name': 'requests', 'version': '2.26.0'},
-                  {'name': 'azure-cosmos', 'version': '4.3.0'}
-              ]
-              results = await scanner.scan_dependencies(dependencies)
-              print('Dependency Scan Results:', results)
-          
-          asyncio.run(run_scan())
-          "
-
-      - name: Run Compliance Scan
-        env:
-          COSMOS_DB_CONNECTION_STRING: ${{ secrets.COSMOS_DB_CONNECTION_STRING }}
-          COSMOS_DB_DATABASE_NAME: ${{ secrets.COSMOS_DB_DATABASE_NAME }}
-          COSMOS_DB_CONTAINER_NAME: ${{ secrets.COSMOS_DB_CONTAINER_NAME }}
-        run: |
-          python -c "
-          import asyncio
-          from src.scanners.scanning_service import ScanningService
-          
-          async def run_scan():
-              scanner = ScanningService()
-              results = await scanner.scan_compliance()
-              print('Compliance Scan Results:', results)
-          
-          asyncio.run(run_scan())
-          "
-
-      - name: Generate Scan Report
-        run: |
-          python -c "
           import json
-          from datetime import datetime
+          from src.scanners.scanning_service import ScanningService
           
-          report = {
-              'timestamp': datetime.utcnow().isoformat(),
-              'repository': '${{ github.repository }}',
-              'workflow_run': '${{ github.run_id }}',
-              'status': 'completed'
-          }
+          async def run_scan():
+              scanner = ScanningService()
+              results = await scanner.run_scan()
+              print('Scan Results:', json.dumps(results, indent=2))
+              return results
           
-          with open('scan_report.json', 'w') as f:
-              json.dump(report, f, indent=2)
+          results = asyncio.run(run_scan())
+          
+          if results.get('status') == 'failed':
+              print('Scan failed:', results.get('error'))
+              exit(1)
           "
 
       - name: Upload Scan Results
+        if: always()
         uses: actions/upload-artifact@v3
         with:
           name: security-scan-results
-          path: scan_report.json
-
-  notify:
-    needs: security_scan
-    runs-on: ubuntu-latest
-    if: always()
-    
-    steps:
-      - name: Process Results
-        run: |
-          if [ "${{ needs.security_scan.result }}" == "success" ]; then
-            echo "Security scan completed successfully"
-          else
-            echo "Security scan failed"
-          fi
+          path: |
+            scan_report.json
+            *.log
