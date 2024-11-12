@@ -13,36 +13,40 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Fetch all history for all branches and tags
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-          cache: 'pip'
 
-      - name: Verify repository structure
+      - name: Debug directory structure
         run: |
+          echo "Current directory:"
           pwd
+          echo "\nDirectory contents:"
           ls -la
-          ls -la requirements/ || echo "Requirements directory not found"
+          echo "\nFull directory tree:"
+          tree || (apt-get update && apt-get install -y tree && tree)
 
-      - name: Install dependencies
+      - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          if [ -f "requirements/base.txt" ]; then
-            echo "Installing base requirements..."
-            pip install -r requirements/base.txt
-          elif [ -f "requirements.txt" ]; then
-            echo "Installing from root requirements.txt..."
-            pip install -r requirements.txt
-          else
-            echo "No requirements file found!"
-            exit 1
-          fi
+          pip install pytest==7.4.3 \
+                      pytest-asyncio==0.21.1 \
+                      pytest-cov==4.1.0 \
+                      python-dateutil==2.8.2 \
+                      pyyaml==6.0.1 \
+                      azure-identity==1.15.0 \
+                      azure-mgmt-resource==23.0.1 \
+                      azure-cosmos==4.5.1 \
+                      azure-storage-blob==12.19.0 \
+                      azure-servicebus==7.11.3 \
+                      azure-functions==1.17.0 \
+                      requests==2.31.0 \
+                      aiohttp==3.9.1 \
+                      ratelimit==2.2.1
 
       - name: Azure Login
         uses: azure/login@v1
@@ -55,21 +59,17 @@ jobs:
           COSMOS_DB_DATABASE_NAME: ${{ secrets.COSMOS_DB_DATABASE_NAME }}
           COSMOS_DB_CONTAINER_NAME: ${{ secrets.COSMOS_DB_CONTAINER_NAME }}
         run: |
-          # Verify Python environment
+          echo "Python version:"
           python --version
+          
+          echo "\nInstalled packages:"
           pip list
           
-          # Run scan
+          echo "\nRunning security scan..."
           python -c "
           import asyncio
           import json
           import os
-          import sys
-          
-          print('Python path:', sys.path)
-          print('Current directory:', os.getcwd())
-          print('Directory contents:', os.listdir('.'))
-          
           from src.scanners.scanning_service import ScanningService
           
           async def run_scan():
@@ -94,9 +94,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: security-scan-results
-          path: |
-            scan_results.json
-            *.log
+          path: scan_results.json
 
   notify:
     needs: security_scan
@@ -107,8 +105,8 @@ jobs:
       - name: Check scan status
         run: |
           if [ "${{ needs.security_scan.result }}" == "success" ]; then
-            echo "Security scan completed successfully"
+            echo "✅ Security scan completed successfully"
           else
-            echo "Security scan failed"
+            echo "❌ Security scan failed"
             exit 1
           fi
