@@ -1,0 +1,31 @@
+# requirements/base.txt
+
+# Core Azure Functions
+azure-functions==1.12.0
+azure-functions-worker==1.1.9
+
+# Azure SDK (Compatible versions)
+azure-identity==1.15.0
+azure-mgmt-resource==23.0.1
+azure-mgmt-web==7.3.1
+azure-cosmos==4.5.1
+azure-storage-blob==12.19.0
+azure-servicebus==7.11.3
+azure-keyvault-secrets==4.6.0
+
+# Web Framework
+fastapi==0.95.0
+uvicorn==0.21.1
+python-multipart==0.0.6
+
+# Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+cryptography==41.0.1
+
+# Utils
+python-dotenv==1.0.0
+pyyaml==6.0.1
+requests==2.31.0
+aiohttp==3.9.1
+packaging==20.9  # Fixed lower version to avoid conflicts

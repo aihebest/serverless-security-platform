@@ -1,0 +1,18 @@
+# requirements/dev.txt
+
+# Development Tools
+wheel==0.38.4
+setuptools==65.5.1
+
+# Code Quality (Adjusted versions)
+black==22.3.0  # Downgraded to avoid packaging conflict
+flake8==6.1.0
+mypy==1.6.1
+bandit==1.7.5
+safety==2.3.5
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0

@@ -1,134 +1,193 @@
-# src/scanners/compliance_scanner.py
-from typing import Dict, List
-import yaml
-from .base_scanner import BaseScanner
+# .github/workflows/security-scan.yml
+name: Security Scanning Pipeline
 
-class ComplianceScanner(BaseScanner):
-    """Scanner for checking compliance against security standards"""
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'  # Daily scan
+  workflow_dispatch:      # Manual trigger
+
+env:
+  PYTHON_VERSION: '3.9'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
+
+jobs:
+  security_scan:
+    runs-on: ubuntu-latest
     
-    def __init__(self, logger=None):
-        super().__init__(logger)
-        self.compliance_rules = self._load_compliance_rules()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Create virtual environment
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          echo "VIRTUAL_ENV=$VIRTUAL_ENV" >> $GITHUB_ENV
+          echo "$VIRTUAL_ENV/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          # Install core dependencies first
+          pip install \
+            azure-functions==1.17.0 \
+            azure-identity==1.19.0 \
+            azure-mgmt-resource==23.0.1 \
+            azure-cosmos==4.5.1 \
+            azure-storage-blob==12.19.0 \
+            aiohttp==3.9.1 \
+            cryptography==41.0.1
+          
+          # Install testing and development dependencies
+          pip install \
+            pytest==7.4.3 \
+            pytest-asyncio==0.21.1 \
+            pytest-cov==4.1.0 \
+            python-dateutil==2.8.2 \
+            PyYAML==6.0.1
+
+      - name: Configure Azure credentials
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up environment variables
+        run: |
+          echo "COSMOS_DB_CONNECTION_STRING=${{ secrets.COSMOS_DB_CONNECTION_STRING }}" >> $GITHUB_ENV
+          echo "COSMOS_DB_DATABASE_NAME=${{ secrets.COSMOS_DB_DATABASE_NAME }}" >> $GITHUB_ENV
+          echo "COSMOS_DB_CONTAINER_NAME=${{ secrets.COSMOS_DB_CONTAINER_NAME }}" >> $GITHUB_ENV
+          echo "NVD_API_KEY=${{ secrets.NVD_API_KEY }}" >> $GITHUB_ENV
+          echo "PYTHONPATH=${{ github.workspace }}" >> $GITHUB_ENV
+
+      - name: Initialize logging
+        run: |
+          python -c "
+          import logging
+          import os
+          
+          logging.basicConfig(
+              level=logging.INFO,
+              format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+              handlers=[
+                  logging.StreamHandler(),
+                  logging.FileHandler('security_scan.log')
+              ]
+          )
+          logger = logging.getLogger('security_scan')
+          logger.info('Security scanning environment initialized')
+          "
+
+      - name: Run dependency scan
+        run: |
+          python -c "
+          import asyncio
+          import logging
+          from src.scanners.dependency_scanner import DependencyScanner
+          
+          async def scan_dependencies():
+              scanner = DependencyScanner()
+              dependencies = [
+                  {'name': 'azure-functions', 'version': '1.17.0'},
+                  {'name': 'azure-identity', 'version': '1.19.0'},
+                  {'name': 'azure-cosmos', 'version': '4.5.1'}
+              ]
+              results = await scanner.scan(dependencies)
+              return results
+          
+          results = asyncio.run(scan_dependencies())
+          logger = logging.getLogger('security_scan')
+          logger.info(f'Dependency scan completed: {results}')
+          "
+
+      - name: Run compliance scan
+        run: |
+          python -c "
+          import asyncio
+          import logging
+          from src.scanners.compliance_scanner import ComplianceScanner
+          
+          async def scan_compliance():
+              scanner = ComplianceScanner()
+              config = {
+                  'password_policy': {
+                      'min_length': 12,
+                      'require_special_chars': True
+                  },
+                  'encryption': {
+                      'require_tls': True,
+                      'require_at_rest': True
+                  },
+                  'access_control': {
+                      'require_mfa': True,
+                      'require_rbac': True
+                  }
+              }
+              results = await scanner.scan(config)
+              return results
+          
+          results = asyncio.run(scan_compliance())
+          logger = logging.getLogger('security_scan')
+          logger.info(f'Compliance scan completed: {results}')
+          "
+
+      - name: Run full security scan
+        if: success()
+        run: |
+          python -c "
+          import asyncio
+          import json
+          import logging
+          from src.scanners.scanning_service import ScanningService
+          
+          async def run_full_scan():
+              scanner = ScanningService()
+              results = await scanner.run_scan()
+              
+              with open('scan_results.json', 'w') as f:
+                  json.dump(results, f, indent=2)
+              
+              return results
+          
+          results = asyncio.run(run_full_scan())
+          logger = logging.getLogger('security_scan')
+          logger.info(f'Full security scan completed')
+          
+          if results.get('status') == 'failed':
+              logger.error(f'Scan failed: {results.get("error")}')
+              exit(1)
+          "
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-scan-results
+          path: |
+            scan_results.json
+            security_scan.log
+          retention-days: 14
+
+  notify:
+    needs: security_scan
+    runs-on: ubuntu-latest
+    if: always()
     
-    def _load_compliance_rules(self) -> Dict:
-        """Load compliance rules from configuration"""
-        # In practice, load from a file or service
-        return {
-            'password_policy': {
-                'min_length': 12,
-                'require_special_chars': True,
-                'require_numbers': True,
-                'max_age_days': 90
-            },
-            'encryption': {
-                'require_tls': True,
-                'min_tls_version': '1.2',
-                'require_at_rest': True
-            },
-            'access_control': {
-                'require_mfa': True,
-                'max_session_duration': 12,
-                'require_rbac': True
-            }
-        }
-    
-    async def scan(self, config: Dict) -> Dict:
-        """Scan configuration for compliance violations"""
-        try:
-            violations = []
-            
-            # Check password policy
-            if 'password_policy' in config:
-                violations.extend(
-                    self._check_password_policy(config['password_policy'])
-                )
-            
-            # Check encryption settings
-            if 'encryption' in config:
-                violations.extend(
-                    self._check_encryption(config['encryption'])
-                )
-            
-            # Check access control
-            if 'access_control' in config:
-                violations.extend(
-                    self._check_access_control(config['access_control'])
-                )
-            
-            return self.generate_report(violations)
-            
-        except Exception as e:
-            if self.logger:
-                self.logger.log_alert(
-                    "high",
-                    f"Compliance scan failed: {str(e)}",
-                    {"config": config}
-                )
-            return {
-                'timestamp': datetime.now(UTC).isoformat(),
-                'error': str(e),
-                'scan_status': 'failed'
-            }
-    
-    def _check_password_policy(self, policy: Dict) -> List[Dict]:
-        """Check password policy compliance"""
-        violations = []
-        rules = self.compliance_rules['password_policy']
-        
-        if policy.get('min_length', 0) < rules['min_length']:
-            violations.append({
-                'severity': 'high',
-                'category': 'password_policy',
-                'message': f"Password minimum length ({policy.get('min_length')}) below required {rules['min_length']}"
-            })
-        
-        if not policy.get('require_special_chars') and rules['require_special_chars']:
-            violations.append({
-                'severity': 'medium',
-                'category': 'password_policy',
-                'message': "Special characters not required in passwords"
-            })
-        
-        return violations
-    
-    def _check_encryption(self, config: Dict) -> List[Dict]:
-        """Check encryption settings compliance"""
-        violations = []
-        rules = self.compliance_rules['encryption']
-        
-        if not config.get('require_tls') and rules['require_tls']:
-            violations.append({
-                'severity': 'critical',
-                'category': 'encryption',
-                'message': "TLS encryption not enforced"
-            })
-        
-        if not config.get('require_at_rest') and rules['require_at_rest']:
-            violations.append({
-                'severity': 'high',
-                'category': 'encryption',
-                'message': "At-rest encryption not enforced"
-            })
-        
-        return violations
-    
-    def _check_access_control(self, config: Dict) -> List[Dict]:
-        """Check access control compliance"""
-        violations = []
-        rules = self.compliance_rules['access_control']
-        
-        if not config.get('require_mfa') and rules['require_mfa']:
-            violations.append({
-                'severity': 'critical',
-                'category': 'access_control',
-                'message': "Multi-factor authentication not required"
-            })
-        
-        if not config.get('require_rbac') and rules['require_rbac']:
-            violations.append({
-                'severity': 'high',
-                'category': 'access_control',
-                'message': "Role-based access control not implemented"
-            })
-        
-        return violations
+    steps:
+      - name: Check scan status
+        run: |
+          if [ "${{ needs.security_scan.result }}" == "success" ]; then
+            echo "Security scan completed successfully"
+          else
+            echo "Security scan failed"
+            exit 1
+          fi
