@@ -13,7 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for all branches and tags
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -21,13 +24,24 @@ jobs:
           python-version: '3.9'
           cache: 'pip'
 
+      - name: Verify repository structure
+        run: |
+          pwd
+          ls -la
+          ls -la requirements/ || echo "Requirements directory not found"
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          if [[ "${{ github.event_name }}" == "push" ]]; then
+          if [ -f "requirements/base.txt" ]; then
+            echo "Installing base requirements..."
             pip install -r requirements/base.txt
+          elif [ -f "requirements.txt" ]; then
+            echo "Installing from root requirements.txt..."
+            pip install -r requirements.txt
           else
-            pip install -r requirements/test.txt
+            echo "No requirements file found!"
+            exit 1
           fi
 
       - name: Azure Login
@@ -41,9 +55,21 @@ jobs:
           COSMOS_DB_DATABASE_NAME: ${{ secrets.COSMOS_DB_DATABASE_NAME }}
           COSMOS_DB_CONTAINER_NAME: ${{ secrets.COSMOS_DB_CONTAINER_NAME }}
         run: |
+          # Verify Python environment
+          python --version
+          pip list
+          
+          # Run scan
           python -c "
           import asyncio
           import json
+          import os
+          import sys
+          
+          print('Python path:', sys.path)
+          print('Current directory:', os.getcwd())
+          print('Directory contents:', os.listdir('.'))
+          
           from src.scanners.scanning_service import ScanningService
           
           async def run_scan():
@@ -56,6 +82,7 @@ jobs:
               return results
           
           results = asyncio.run(run_scan())
+          print('Scan results:', json.dumps(results, indent=2))
           
           if results.get('status') == 'failed':
               print('Scan failed:', results.get('error'))
@@ -70,3 +97,18 @@ jobs:
           path: |
             scan_results.json
             *.log
+
+  notify:
+    needs: security_scan
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Check scan status
+        run: |
+          if [ "${{ needs.security_scan.result }}" == "success" ]; then
+            echo "Security scan completed successfully"
+          else
+            echo "Security scan failed"
+            exit 1
+          fi
