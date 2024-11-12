@@ -1,0 +1,56 @@
+# infrastructure/validation/validation-config.yaml
+resources:
+  - name: "securitydbzh4ye"  # Updated to match your current resources
+    type: "Microsoft.DocumentDB/databaseAccounts"
+    required_properties:
+      kind: "GlobalDocumentDB"
+      location: "westeurope"
+    security_checks:
+      - encryption_enabled: true
+      - firewall_rules: true
+
+  - name: "securityautozh4ye"  # Updated to match your current resources
+    type: "Microsoft.SignalRService/SignalR"
+    required_properties:
+      kind: "SignalR"
+      location: "westeurope"
+      sku:
+        tier: "Standard"
+        name: "Standard_S1"
+
+  - name: "securitystoragezh4ye"  # Updated to match your current resources
+    type: "Microsoft.Storage/storageAccounts"
+    required_properties:
+      kind: "StorageV2"
+      location: "westeurope"
+      sku:
+        tier: "Standard"
+        name: "Standard_LRS"
+
+  - name: "fasecurityautomatizh4ye"  # Updated to match your current resources
+    type: "Microsoft.Web/sites"
+    required_properties:
+      kind: "functionapp,linux"
+      location: "westeurope"
+
+  - name: "aisecurityzh4ye"  # Updated to match your current resources
+    type: "Microsoft.Insights/components"
+    required_properties:
+      kind: "web"
+      location: "westeurope"
+
+security_requirements:
+  cosmos_db:
+    - encryption_enabled: true
+    - firewall_enabled: true
+    - network_acls_configured: true
+    
+  storage:
+    - https_only: true
+    - secure_transfer_required: true
+    - network_acls_configured: true
+    
+  function_app:
+    - https_only: true
+    - runtime_version: "~4"
+    - ftps_state: "Disabled"

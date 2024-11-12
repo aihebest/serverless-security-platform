@@ -1,0 +1,46 @@
+{
+  "resources": [
+    {
+      "name": "securitydbzh4ye",
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "exists": true,
+      "status": "Succeeded",
+      "properties_valid": true,
+      "details": "Properties match"
+    },
+    {
+      "name": "securityautozh4ye",
+      "type": "Microsoft.SignalRService/SignalR",
+      "exists": true,
+      "status": "Succeeded",
+      "properties_valid": true,
+      "details": "Properties match"
+    },
+    {
+      "name": "securitystoragezh4ye",
+      "type": "Microsoft.Storage/storageAccounts",
+      "exists": true,
+      "status": "Succeeded",
+      "properties_valid": true,
+      "details": "Properties match"
+    },
+    {
+      "name": "fasecurityautomatizh4ye",
+      "type": "Microsoft.Web/sites",
+      "exists": true,
+      "status": "Succeeded",
+      "properties_valid": true,
+      "details": "Properties match"
+    },
+    {
+      "name": "aisecurityzh4ye",
+      "type": "Microsoft.Insights/components",
+      "exists": true,
+      "status": "Succeeded",
+      "properties_valid": true,
+      "details": "Properties match"
+    }
+  ],
+  "overall_status": "PASSED",
+  "timestamp": "2024-11-11T04:36:23.822531"
+}

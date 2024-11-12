@@ -1,0 +1,56 @@
+<!-- src/dashboard/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Monitoring Dashboard</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>Security Monitoring Dashboard</h1>
+            <div class="time-controls">
+                <select id="timeRange">
+                    <option value="1h">Last Hour</option>
+                    <option value="24h">Last 24 Hours</option>
+                    <option value="7d">Last 7 Days</option>
+                </select>
+            </div>
+        </header>
+
+        <main>
+            <section class="metrics-overview">
+                <div class="metric-card" id="highSeverity">
+                    <h3>High Severity</h3>
+                    <div class="metric-value">0</div>
+                </div>
+                <div class="metric-card" id="mediumSeverity">
+                    <h3>Medium Severity</h3>
+                    <div class="metric-value">0</div>
+                </div>
+                <div class="metric-card" id="lowSeverity">
+                    <h3>Low Severity</h3>
+                    <div class="metric-value">0</div>
+                </div>
+            </section>
+
+            <section class="charts-container">
+                <div class="chart" id="trendChart"></div>
+                <div class="chart" id="severityDistribution"></div>
+            </section>
+
+            <section class="alerts-panel">
+                <h2>Recent Alerts</h2>
+                <div id="alertsList"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="static/js/dashboard.js"></script>
+    <script src="static/js/charts.js"></script>
+    <script src="static/js/notifications.js"></script>
+</body>
+</html>

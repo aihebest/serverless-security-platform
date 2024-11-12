@@ -1,0 +1,8 @@
+# Test script
+async def test_scanning():
+    scanner = ScanningService()
+    results = await scanner.scan_all()
+    print(json.dumps(results, indent=2))
+
+if __name__ == "__main__":
+    asyncio.run(test_scanning())

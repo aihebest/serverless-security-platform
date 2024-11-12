@@ -1,0 +1,8 @@
+{
+  "cosmos_db": "securitydbrrj0x",
+  "signalr": "securityautorrj0x",
+  "storage": "securitystoragerrj0x",
+  "function_app": "fasecurityautomatinrrj0x",
+  "app_insights": "aisecurityrrj0x",
+  "resource_group": "Production"
+}

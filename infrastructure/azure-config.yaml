@@ -1,0 +1,37 @@
+# infrastructure/azure-config.yaml
+name: serverless-security-platform
+location: westeurope  # or your preferred region
+resourceGroup: rg-serverless-security
+
+services:
+  signalR:
+    name: SecurityAuto
+    sku: Standard_S1
+    capacity: 1
+    features:
+      - ServiceMode: Default
+      - EnableConnectivityLogs: true
+      - EnableMessagingLogs: true
+
+  cosmosDB:
+    name: security-scan-results-db
+    databaseName: SecurityDB
+    containers:
+      - name: SecurityScans
+        partitionKey: /scanId
+      - name: Incidents
+        partitionKey: /incidentId
+      - name: Metrics
+        partitionKey: /metricId
+
+  functionApp:
+    name: fa-security-automation
+    runtime: python
+    version: '3.9'
+    appServicePlan: asp-security-automation
+
+  staticWebApp:
+    name: SecurityScanDashboard
+    sku: Standard
+    allowedOrigins:
+      - https://securityscandashboard.azurewebsites.net

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Security Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .summary-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .chart-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .findings-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .findings-table th, .findings-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .severity-critical { color: #dc3545; }
+        .severity-high { color: #fd7e14; }
+        .severity-medium { color: #ffc107; }
+        .severity-low { color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Security Assessment Report</h1>
+        <p>Generated: {{ generated_at }}</p>
+        <p>Period: {{ data.period }}</p>
+    </div>
+
+    <div class="summary-box">
+        <h2>Executive Summary</h2>
+        <p>Current Risk Score: {{ data.summary.current_risk_score }}%</p>
+        <p>Trend: {{ data.summary.risk_score_trend }}</p>
+        <p>Total Findings: {{ data.summary.total_findings }}</p>
+    </div>
+
+    <div class="chart-container">
+        <h2>Risk Score Trend</h2>
+        <img src="data:image/png;base64,{{ charts.risk_trend }}" alt="Risk Score Trend">
+    </div>
+
+    <div class="chart-container">
+        <h2>Finding Severity Distribution</h2>
+        <img src="data:image/png;base64,{{ charts.severity_dist }}" alt="Severity Distribution">
+    </div>
+
+    <h2>Findings Summary</h2>
+    <table class="findings-table">
+        <tr>
+            <th>Severity</th>
+            <th>Count</th>
+        </tr>
+        {% for severity, count in data.summary.severity_distribution.items() %}
+        <tr>
+            <td class="severity-{{ severity.lower() }}">{{ severity }}</td>
+            <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Incident Summary</h2>
+    <div class="summary-box">
+        <p>Total Incidents: {{ data.summary.incidents.total }}</p>
+        <p>Open Incidents: {{ data.summary.incidents.open }}</p>
+        <p>Resolved Incidents: {{ data.summary.incidents.resolved }}</p>

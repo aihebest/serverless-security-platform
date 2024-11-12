@@ -1,0 +1,10 @@
+
+Deployed Azure Resources:
+------------------------
+Resource Group: Production
+SignalR: securityautozh4ye
+Storage Account: securitystoragezh4ye
+Function App: fasecurityautomatizh4ye
+Cosmos DB: securitydbzh4ye
+Application Insights: aisecurityzh4ye
+                

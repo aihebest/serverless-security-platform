@@ -1,0 +1,21 @@
+# requirements-dev.txt
+# Core Development Dependencies
+wheel==0.38.4
+setuptools==65.5.1
+packaging==21.3
+
+# Testing (Fixed versions)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Code Quality (Fixed versions)
+black==23.10.1
+flake8==6.1.0
+mypy==1.6.1
+bandit==1.7.5
+safety==2.3.5
+
+snyk==0.4.0
+dependency-check-core==7.4.4
