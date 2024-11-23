@@ -4,7 +4,6 @@ import json
 import asyncio
 from datetime import datetime
 from azure.cosmos import CosmosClient, exceptions
-from azure.identity import DefaultAzureCredential
 
 class DashboardMetricsProcessor:
     def __init__(self):
@@ -12,126 +11,105 @@ class DashboardMetricsProcessor:
             connection_string = os.getenv('COSMOS_DB_CONNECTION_STRING')
             if not connection_string:
                 raise ValueError("COSMOS_DB_CONNECTION_STRING environment variable is not set")
-                
-            self.database_name = os.getenv('COSMOS_DB_DATABASE_NAME', 'SecurityFindings')
-            self.container_name = os.getenv('COSMOS_DB_CONTAINER_NAME', 'SecurityScans')
             
+            # Connect to existing database and container using your actual names
+            print("Connecting to Cosmos DB...")
             self.cosmos_client = CosmosClient.from_connection_string(connection_string)
+            self.database = self.cosmos_client.get_database_client("SecurityScans")  # Your actual database name
+            self.container = self.database.get_container_client("ScanResults")  # Your actual container name
             
-            # Ensure database exists
-            print(f"Creating database if not exists: {self.database_name}")
-            self.database = self.cosmos_client.create_database_if_not_exists(
-                id=self.database_name,
-                throughput=400
-            )
-            
-            # Ensure container exists
-            print(f"Creating container if not exists: {self.container_name}")
-            self.container = self.database.create_container_if_not_exists(
-                id=self.container_name,
-                partition_key_path="/id"
-            )
-            
-            print("✅ Database and container setup completed")
+            print("✅ Connected to Cosmos DB successfully")
             
         except Exception as e:
-            print(f"Failed to initialize Cosmos DB client: {str(e)}")
+            print(f"Failed to connect to Cosmos DB: {str(e)}")
             raise
 
     async def update_dashboard_metrics(self):
         """Update dashboard with latest security metrics"""
         try:
-            # Get scan results
-            scan_results = self._load_scan_results()
+            scan_id = f'scan_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}'
             
-            # Prepare metrics document
-            metrics = {
-                'id': f'metrics_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}',
-                'timestamp': datetime.utcnow().isoformat(),
-                'scan_results': scan_results,
-                'security_score': self._calculate_security_score(scan_results)
+            # Prepare scan document
+            scan_document = {
+                'id': scan_id,
+                'ResourceId': f'/subscriptions/5eeb3d1f-7dc7-4cf8-be96-9b979ea25792',  # Your subscription ID
+                'ResourceName': 'security-scan-results-db',
+                'ScanTime': datetime.utcnow().isoformat(),
+                'Findings': self._load_scan_results(),
+                '_rid': scan_id,
+                '_self': f'/dbs/SecurityScans/colls/ScanResults/docs/{scan_id}',
+                '_etag': f'\"{datetime.utcnow().timestamp()}\"',
+                '_attachments': 'attachments/',
+                '_ts': int(datetime.utcnow().timestamp())
             }
             
             # Store in Cosmos DB
-            print("Storing metrics in Cosmos DB...")
-            self.container.upsert_item(metrics)
-            print("✅ Dashboard metrics updated successfully")
+            print("Storing scan results in Cosmos DB...")
+            self.container.upsert_item(scan_document)
+            print("✅ Scan results stored successfully")
             
-            # Save locally for debugging
-            with open('dashboard_metrics.json', 'w') as f:
-                json.dump(metrics, f, indent=2)
+            # Save locally for verification
+            with open('scan_results.json', 'w') as f:
+                json.dump(scan_document, f, indent=2)
                 
-            print(f"Security Score: {metrics['security_score']}")
-            return metrics
-            
-        except exceptions.CosmosResourceNotFoundError as e:
-            print(f"Resource not found error: {str(e)}")
-            print("Attempting to create required resources...")
-            self.__init__()  # Reinitialize to create resources
-            return await self.update_dashboard_metrics()
+            return scan_document
             
         except Exception as e:
-            print(f"❌ Error updating dashboard metrics: {str(e)}")
+            print(f"❌ Error storing scan results: {str(e)}")
             return {
-                'id': f'metrics_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}',
+                'id': scan_id,
                 'status': 'failed',
                 'error': str(e)
             }
 
     def _load_scan_results(self):
         """Load and process scan results files"""
-        results = {}
+        findings = []
         
-        # Load SAST results if available
+        # Load SAST results
         try:
             with open('bandit-results.json', 'r') as f:
-                results['sast'] = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            results['sast'] = {'metrics': {'high': 0, 'medium': 0, 'low': 0}}
+                sast_results = json.load(f)
+                if sast_results.get('metrics', {}).get('high', 0) > 0:
+                    findings.append({
+                        'Severity': 'High',
+                        'Description': 'High severity security issues found',
+                        'Recommendation': 'Review and fix high severity security issues'
+                    })
+                if sast_results.get('metrics', {}).get('medium', 0) > 0:
+                    findings.append({
+                        'Severity': 'Medium',
+                        'Description': 'Medium severity security issues found',
+                        'Recommendation': 'Review and address medium severity issues'
+                    })
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"⚠️ No SAST results found: {str(e)}")
             
-        # Load dependency check results if available
+        # Load dependency check results
         try:
             with open('safety-results.json', 'r') as f:
-                results['dependencies'] = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            results['dependencies'] = []
+                deps_results = json.load(f)
+                for issue in deps_results:
+                    findings.append({
+                        'Severity': issue.get('severity', 'Low'),
+                        'Description': f"Dependency issue: {issue.get('package', '')}",
+                        'Recommendation': issue.get('advisory', 'Update dependency')
+                    })
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"⚠️ No dependency check results found: {str(e)}")
             
-        return results
-
-    def _calculate_security_score(self, scan_results):
-        """Calculate security score from scan results"""
-        base_score = 100
-        deductions = {
-            'high': 10,
-            'medium': 5,
-            'low': 2
-        }
-        
-        # Calculate score from SAST findings
-        sast_metrics = scan_results.get('sast', {}).get('metrics', {})
-        score = base_score
-        for severity, count in sast_metrics.items():
-            if severity in deductions:
-                score -= count * deductions[severity]
-                
-        # Calculate score from dependency findings
-        deps = scan_results.get('dependencies', [])
-        for dep in deps:
-            severity = dep.get('severity', 'low').lower()
-            if severity in deductions:
-                score -= deductions[severity]
-                
-        return max(0, score)
+        return findings
 
 async def main():
     try:
+        print("Starting scan results update...")
         processor = DashboardMetricsProcessor()
-        metrics = await processor.update_dashboard_metrics()
-        print("Security Scan Results:")
-        print(json.dumps(metrics, indent=2))
+        results = await processor.update_dashboard_metrics()
+        print("Scan Update Complete")
+        print(json.dumps(results, indent=2))
         
     except Exception as e:
-        print(f"Failed to update dashboard: {str(e)}")
+        print(f"Failed to update scan results: {str(e)}")
         raise
 
 if __name__ == "__main__":
