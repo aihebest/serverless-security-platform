@@ -187,3 +187,33 @@ async def startup():
     except Exception as e:
         logger.error(f"Failed to initialize services: {str(e)}")
         raise
+
+# Add to your existing function_app.py
+
+@app.schedule(schedule="0 0 * * * *", arg_name="mytimer", run_on_startup=False,
+              use_monitor=True) 
+async def automated_security_scan(mytimer: func.TimerRequest) -> None:
+    """
+    Timer trigger for automated security scans
+    Runs every hour (adjust schedule as needed)
+    """
+    logging.info('Automated security scan timer trigger started')
+
+    if mytimer.past_due:
+        logging.info('Scan trigger is past due')
+
+    try:
+        # Run scheduled assessment using orchestrator
+        results = await orchestrator.run_scheduled_assessment()
+        
+        logging.info(f"Completed scheduled assessment: {results['assessment_id']}")
+        
+        # Log summary metrics
+        successful_scans = len(results['scan_results']['successful_scans'])
+        failed_scans = len(results['scan_results']['failed_scans'])
+        
+        logging.info(f"Scan summary: {successful_scans} successful, {failed_scans} failed")
+        
+    except Exception as e:
+        logging.error(f'Error in automated security scan: {str(e)}')
+        raise

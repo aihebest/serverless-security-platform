@@ -1,8 +1,8 @@
-# src/core/orchestrator.py
+# Update to src/core/orchestrator.py
 
 from typing import Dict, Any, List
-import logging
 from datetime import datetime
+import logging
 import asyncio
 from ..scanners.scanning_service import ScanningService
 from ..monitors.security_monitor import SecurityMonitor
@@ -22,50 +22,52 @@ class SecurityOrchestrator:
         self.report_storage = ReportStorage()
         self.signalr_client = SignalRClient()
 
-    async def initialize(self):
-        """Initialize all services"""
-        try:
-            await self.signalr_client.initialize()
-            logger.info("Security orchestrator initialized")
-        except Exception as e:
-            logger.error(f"Failed to initialize orchestrator: {str(e)}")
-            raise
+    # ... (keep your existing methods) ...
 
-    async def run_security_assessment(self, project_id: str, scan_config: Dict[str, Any]):
-        """Run complete security assessment"""
+    async def run_scheduled_assessment(self) -> Dict[str, Any]:
+        """
+        Runs scheduled security assessment across all configured scan types
+        """
         try:
-            # Start assessment
-            assessment_id = f"assessment_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+            assessment_id = f"scheduled_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
             
+            # Notify assessment start
             await self.signalr_client.send_message(
-                "assessmentStarted",
+                "scheduledAssessmentStarted",
                 {
                     "assessment_id": assessment_id,
-                    "project_id": project_id,
                     "timestamp": datetime.utcnow().isoformat()
                 }
             )
 
-            # Run security scan
-            scan_results = await self.scanning_service.scan_dependencies(
-                scan_config.get('dependencies', [])
+            # Get scan configuration
+            scan_config = await self._get_scheduled_scan_config()
+            
+            # Run all configured scans concurrently
+            scan_tasks = []
+            for scan_type, config in scan_config['scans'].items():
+                scan_tasks.append(
+                    self.scanning_service.execute_scan(scan_type, config)
+                )
+            
+            # Wait for all scans to complete
+            scan_results = await asyncio.gather(*scan_tasks, return_exceptions=True)
+            
+            # Process results and handle any errors
+            processed_results = await self._process_scheduled_scan_results(
+                scan_results, 
+                scan_config['scans'].keys()
             )
 
-            # Process results
-            await asyncio.gather(
-                self.security_monitor.process_scan_results(scan_results),
-                self.incident_manager.process_scan_findings(scan_results)
-            )
-
-            # Generate report
+            # Generate comprehensive report
             metrics = await self.security_monitor.get_current_metrics()
             incidents = await self.incident_manager.get_active_incidents()
             
             report = await self.report_generator.generate_security_report(
-                scan_results=[scan_results],
+                scan_results=processed_results['successful_scans'],
                 metrics=metrics,
                 incidents=incidents,
-                report_type="full"
+                report_type="scheduled"
             )
 
             # Store report
@@ -73,13 +75,13 @@ class SecurityOrchestrator:
 
             # Send completion notification
             await self.signalr_client.send_message(
-                "assessmentCompleted",
+                "scheduledAssessmentCompleted",
                 {
                     "assessment_id": assessment_id,
-                    "project_id": project_id,
                     "report_id": report_id,
                     "timestamp": datetime.utcnow().isoformat(),
-                    "summary": report['summary']
+                    "summary": report['summary'],
+                    "failed_scans": processed_results['failed_scans']
                 }
             )
 
@@ -87,82 +89,81 @@ class SecurityOrchestrator:
                 "assessment_id": assessment_id,
                 "report_id": report_id,
                 "status": "completed",
-                "summary": report['summary']
+                "summary": report['summary'],
+                "scan_results": processed_results
             }
 
         except Exception as e:
-            logger.error(f"Assessment failed: {str(e)}")
-            
+            logger.error(f"Scheduled assessment failed: {str(e)}")
             await self.signalr_client.send_message(
-                "assessmentFailed",
+                "scheduledAssessmentFailed",
                 {
                     "assessment_id": assessment_id,
-                    "project_id": project_id,
                     "error": str(e),
                     "timestamp": datetime.utcnow().isoformat()
                 }
             )
-            
             raise
 
-    async def get_security_status(self, project_id: str) -> Dict[str, Any]:
-        """Get current security status"""
-        try:
-            metrics = await self.security_monitor.get_current_metrics()
-            incidents = await self.incident_manager.get_active_incidents()
-            recent_scans = await self.scanning_service.get_recent_scans(5)
-            
-            return {
-                "project_id": project_id,
-                "timestamp": datetime.utcnow().isoformat(),
-                "metrics": metrics,
-                "active_incidents": len(incidents),
-                "recent_scans": len(recent_scans),
-                "status": self._determine_security_status(metrics, incidents)
+    async def _get_scheduled_scan_config(self) -> Dict[str, Any]:
+        """
+        Gets configuration for scheduled scans
+        """
+        return {
+            'scans': {
+                'vulnerability': {
+                    'severity_threshold': 'MEDIUM',
+                    'scan_timeout': 300
+                },
+                'sast': {
+                    'languages': ['python', 'javascript'],
+                    'scan_timeout': 600
+                },
+                'container': {
+                    'registries': ['acr.azurecr.io'],
+                    'scan_timeout': 300
+                },
+                'compliance': {
+                    'standards': ['CIS', 'NIST'],
+                    'scan_timeout': 900
+                }
             }
-            
-        except Exception as e:
-            logger.error(f"Failed to get security status: {str(e)}")
-            raise
+        }
 
-    def _determine_security_status(
+    async def _process_scheduled_scan_results(
         self,
-        metrics: Dict[str, Any],
-        incidents: List[Dict[str, Any]]
-    ) -> str:
-        """Determine overall security status"""
-        risk_score = metrics.get('risk_score', 0)
-        critical_incidents = sum(1 for i in incidents if i['priority'] == 'P1')
-        
-        if critical_incidents > 0 or risk_score < 60:
-            return "critical"
-        elif risk_score < 80:
-            return "warning"
-        else:
-            return "healthy"
+        scan_results: List[Any],
+        scan_types: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Processes results from scheduled scans
+        """
+        successful_scans = []
+        failed_scans = []
 
-    async def handle_security_alert(self, alert_data: Dict[str, Any]):
-        """Handle incoming security alert"""
-        try:
-            # Create incident if needed
-            if alert_data.get('severity') in ['CRITICAL', 'HIGH']:
-                await self.incident_manager.create_incident({
-                    'title': alert_data.get('title'),
-                    'description': alert_data.get('description'),
-                    'priority': 'P1' if alert_data['severity'] == 'CRITICAL' else 'P2',
-                    'source': alert_data.get('source'),
-                    'related_findings': alert_data.get('related_findings', [])
+        for result, scan_type in zip(scan_results, scan_types):
+            if isinstance(result, Exception):
+                failed_scans.append({
+                    'type': scan_type,
+                    'error': str(result)
+                })
+                continue
+
+            successful_scans.append(result)
+            
+            # Process critical findings immediately
+            if any(finding['severity'] == 'CRITICAL' 
+                  for finding in result.get('findings', [])):
+                await self.handle_security_alert({
+                    'severity': 'CRITICAL',
+                    'title': f'Critical findings in {scan_type} scan',
+                    'description': 'Scheduled scan detected critical security issues',
+                    'source': 'scheduled_scan',
+                    'related_findings': [f for f in result['findings'] 
+                                       if f['severity'] == 'CRITICAL']
                 })
 
-            # Send notification
-            await self.signalr_client.send_message(
-                "securityAlert",
-                {
-                    **alert_data,
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-            )
-            
-        except Exception as e:
-            logger.error(f"Failed to handle security alert: {str(e)}")
-            raise
+        return {
+            'successful_scans': successful_scans,
+            'failed_scans': failed_scans
+        }

@@ -1,26 +1,22 @@
-# tests/conftest.py
 import pytest
+import asyncio
 import os
-import sys
 
-# Add src directory to Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create event loop"""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+    loop.close()
 
-# Fixture for test configuration
-@pytest.fixture
-def test_config():
-    return {
-        "environment": "test",
-        "resource_group": "Production",
-        "location": "westeurope"
+@pytest.fixture(autouse=True)
+def mock_env():
+    """Setup environment variables"""
+    test_vars = {
+        'AZURE_FUNCTION_NAME': 'test-function',
+        'COSMOS_DB_CONNECTION': 'test_connection_string',
+        'AZURE_STORAGE_CONNECTION': 'test_storage_connection'
     }
-
-# Fixture for mock Azure credentials
-@pytest.fixture
-def mock_credentials():
-    return {
-        "clientId": "test-client-id",
-        "clientSecret": "test-client-secret",
-        "subscriptionId": "test-subscription-id",
-        "tenantId": "test-tenant-id"
-    }
+    os.environ.update(test_vars)
+    yield
