@@ -127,6 +127,10 @@ jobs:
             *-results.json
             *-scan.json
 
+      - name: Update Security Dashboard
+        run: |
+          python scripts/verify_dashboard.py --update-dashboard
+
   notify:
     needs: security_scan
     runs-on: ubuntu-latest
