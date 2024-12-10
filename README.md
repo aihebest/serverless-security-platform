@@ -290,4 +290,91 @@ Key Metrics:
 - Service Restoration
 - Data recovery
 - Configuration restoration
+
+Incident Response Workflow
+```mermaid
+flowchart TD
+    A[Security Finding] --> B{Severity Check}
+    B -->|Critical| C[Create P1 Incident]
+    B -->|High| D[Create P2 Incident]
+    B -->|Medium| E[Create P3 Incident]
+    B -->|Low| F[Log Finding]
+    
+    C --> G[Alert Security Team]
+    D --> G
+    
+    G --> H{Investigation Required?}
+    H -->|Yes| I[Start Investigation]
+    H -->|No| J[Apply Auto-Remediation]
+    
+    I --> K[Document Findings]
+    J --> K
+    
+    K --> L[Update Security Status]
+    L --> M[Generate Report]
+    M --> N[Close Incident]
 ```
+Security Monitoring Workflow
+```mermaid
+stateDiagram-v2
+    [*] --> Monitoring
+    
+    Monitoring --> AlertTriggered : Threshold Exceeded
+    AlertTriggered --> IncidentCreation : Critical Alert
+    AlertTriggered --> MetricsUpdate : Non-Critical
+    
+    IncidentCreation --> Investigation
+    Investigation --> Remediation : Action Required
+    Investigation --> Documentation : No Action Needed
+    
+    Remediation --> Verification
+    Verification --> Documentation
+    
+    Documentation --> MetricsUpdate
+    MetricsUpdate --> Monitoring
+    
+    Monitoring --> ReportGeneration : Scheduled
+    ReportGeneration --> Monitoring
+```
+Compliance Check Workflow
+```mermaid
+flowchart LR
+    A[Start Check] --> B{Check Type}
+    B -->|Infrastructure| C[Azure Policy Check]
+    B -->|Application| D[Security Scanner]
+    B -->|Data| E[Data Protection Check]
+    
+    C --> F[Compliance Engine]
+    D --> F
+    E --> F
+    
+    F --> G{Compliant?}
+    G -->|Yes| H[Update Status]
+    G -->|No| I[Create Finding]
+    
+    I --> J{Auto-Fix?}
+    J -->|Yes| K[Apply Fix]
+    J -->|No| L[Create Task]
+    
+    K --> H
+    L --> H
+    H --> M[Generate Report]
+```
+Scheduled Security Scan
+```mermaid
+gantt
+    title Security Scan Schedule
+    dateFormat  HH:mm
+    axisFormat %H:%M
+    
+    section Daily Scans
+    Dependency Scan      :00:00, 30m
+    Configuration Check  :00:30, 30m
+    
+    section Weekly Scans
+    Infrastructure Scan  :crit, 01:00, 1h
+    Compliance Check    :01:00, 1h
+    
+    section On-Change
+    PR Security Check   :active, 00:15, 15m
+    Deploy Check       :00:30, 30m
